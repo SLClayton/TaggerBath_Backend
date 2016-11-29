@@ -10,7 +10,22 @@ app.config["DEBUG"] = True
 @app.route('/')
 @app.route('/index')
 def index():
-    return "Hello, World!"
+    return "You've arrived at the index"
+
+@app.route('/max')
+def max():
+    return "Hello Max!"
+
+@app.route('/test')
+def test():
+    return "Success! This message has been sent from the server!"
+
+@app.route('/<string:s>')
+def whatever():
+    return "You have landed on the " + s + " page!"
+
+
+
 
 
 @app.errorhandler(404)
