@@ -21,7 +21,7 @@ def test():
     return "Success! This message has been sent from the server!"
 
 @app.route('/<string:s>')
-def whatever():
+def whatever(s):
     return "You have landed on the " + s + " page!"
 
 
