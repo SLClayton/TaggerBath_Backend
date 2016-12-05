@@ -5,3 +5,8 @@ threadsafe: true
 handlers:
 - url: /.*
   script: app.app
+
+env_variables:
+  MYSQL_DSN: mysql:unix_socket=/cloudsql/landgrab-151015:europe-west1:landgrab;dbname=database
+  MYSQL_USER: root
+  MYSQL_PASSWORD: donut
