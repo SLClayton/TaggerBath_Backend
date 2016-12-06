@@ -5,3 +5,8 @@ threadsafe: true
 handlers:
 - url: /.*
   script: app.app
+
+env_variables:
+  CLOUDSQL_CONNECTION_NAME: your-connection-name
+  CLOUDSQL_USER: root
+  CLOUDSQL_PASSWORD: donut
