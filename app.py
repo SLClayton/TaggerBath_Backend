@@ -1,11 +1,10 @@
 from flask import Flask, jsonify, request
 import logging
 
-import api
+import api.api
 
 app = Flask(__name__)
 app.config["DEBUG"] = True
-auth = HTTPBasicAuth()
 
 
 
