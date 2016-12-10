@@ -1,8 +1,11 @@
-from flask import Flask
+from flask import Flask, jsonify, request
 import logging
+
+import api
 
 app = Flask(__name__)
 app.config["DEBUG"] = True
+auth = HTTPBasicAuth()
 
 
 
@@ -12,18 +15,22 @@ app.config["DEBUG"] = True
 def index():
     return "You've arrived at the index"
 
-@app.route('/max')
-def max():
-    return "Hello Max!"
-
 @app.route('/test')
 def test():
     return "Success! This message has been sent from the server!"
 
-@app.route('/<string:s>')
-def whatever(s):
-    return "You have landed on the " + s + " page!"
 
+
+@app.route('/api', methods=["POST"])
+def api():
+    if not request.json:
+        response = {"request_id": request["request_id"],
+                    "outcome": "fail",
+                    "message": "Json missing from request"}
+
+        return jsonify(response)
+
+    return api.api(request.json)
 
 
 
