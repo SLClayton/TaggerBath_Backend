@@ -7,17 +7,23 @@ def api(request):
 		return new_position(request)
 
 	else:
-		response = {"request_id": request["request_id"],
-					"outcome": "fail",
-					"message": "Invalid request type"}
+		return invalid_type(request)
 
-		return jsonify(response)
+
+
 
 
 def new_position(request):
-
 	response = {"request_id": request["request_id"],
 				"outcome": "success",
 				"message": "Its working so far"}
 
-	return jsonify(response)
+	return response
+
+
+def invalid_type(request):
+	response = {"request_id": request["request_id"],
+					"outcome": "fail",
+					"message": "Invalid request type"}
+
+	return response

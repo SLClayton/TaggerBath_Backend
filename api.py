@@ -9,9 +9,9 @@ def api(request):
 	else:
 		response = {"request_id": request["request_id"],
 					"outcome": "fail",
-					"message": "Invalid request type"}
+					"message": "Invalid request type '{0}'".format(request["request_type"])}
 
-		return jsonify(response)
+		return response
 
 
 def new_position(request):
@@ -20,4 +20,4 @@ def new_position(request):
 				"outcome": "success",
 				"message": "Its working so far"}
 
-	return jsonify(response)
+	return response

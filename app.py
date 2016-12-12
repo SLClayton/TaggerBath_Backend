@@ -20,16 +20,16 @@ def test():
 
 
 
-@app.route('/api', methods=["POST"])
+@app.route('/api', methods=["GET", "POST"])
 def api():
-    if not request.json:
-        response = {"request_id": request["request_id"],
+    if not request.get_json():
+        response = {"request_id": "NA",
                     "outcome": "fail",
                     "message": "Json missing from request"}
 
         return jsonify(response)
 
-    return api.api(request.json)
+    return jsonify(api.api(request.get_json()))
 
 
 

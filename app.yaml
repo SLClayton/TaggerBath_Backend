@@ -7,6 +7,10 @@ handlers:
   script: app.app
 
 env_variables:
+  
   CLOUDSQL_CONNECTION_NAME: mysql:unix_socket=/cloudsql/landgrab-151015:europe-west1:landgrab;dbname=LandGrab_DB
   CLOUDSQL_USER: root
   CLOUDSQL_PASSWORD: donut
+
+  LAT_SCALE: 0.000180
+  LONG_SCALE: 0.000288
