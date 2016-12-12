@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 import logging
 
-import api.api
+import app_lib.api_handler
 
 app = Flask(__name__)
 app.config["DEBUG"] = True
@@ -21,7 +21,7 @@ def test():
 
 
 @app.route('/api', methods=["GET", "POST"])
-def api():
+def api_router():
     if not request.get_json():
         response = {"request_id": "NA",
                     "outcome": "fail",
@@ -29,7 +29,7 @@ def api():
 
         return jsonify(response)
 
-    return jsonify(api.api(request.get_json()))
+    return jsonify(api_handler.api(request.get_json()))
 
 
 

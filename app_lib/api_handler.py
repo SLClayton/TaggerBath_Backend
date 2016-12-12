@@ -7,8 +7,7 @@ def api(request):
 		return new_position(request)
 
 	else:
-		return invalid_type(request)
-
+		return invalid_request(request)
 
 
 
@@ -21,9 +20,9 @@ def new_position(request):
 	return response
 
 
-def invalid_type(request):
+def invalid_request(request):
 	response = {"request_id": request["request_id"],
-					"outcome": "fail",
-					"message": "Invalid request type"}
+				"outcome": "fail",
+				"message": "Invalid request '{0}'".format(request["request_type"])}
 
 	return response
