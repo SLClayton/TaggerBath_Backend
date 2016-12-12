@@ -6,6 +6,10 @@ handlers:
 - url: /.*
   script: app.app
 
+libraries:
+- name: MySQLdb
+  version: "latest"
+
 env_variables:
   
   CLOUDSQL_CONNECTION_NAME: mysql:unix_socket=/cloudsql/landgrab-151015:europe-west1:landgrab;dbname=LandGrab_DB

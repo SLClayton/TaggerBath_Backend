@@ -5,8 +5,10 @@ import MySQLdb
 import webapp2
 
 
-
 def getCloudSQL():
+	#----------------------------------------------------------------
+	# returns database connection from env variables
+	#----------------------------------------------------------------
 
     CLOUDSQL_CONNECTION_NAME = os.environ.get('CLOUDSQL_CONNECTION_NAME')
     CLOUDSQL_USER = os.environ.get('CLOUDSQL_USER')
@@ -17,3 +19,4 @@ def getCloudSQL():
                          passwd=CLOUDSQL_PASSWORD)
 
     return db
+
