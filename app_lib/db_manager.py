@@ -13,6 +13,7 @@ def getCloudSQL():
     CLOUDSQL_CONNECTION_NAME = os.environ.get('CLOUDSQL_CONNECTION_NAME')
     CLOUDSQL_USER = os.environ.get('CLOUDSQL_USER')
     CLOUDSQL_PASSWORD = os.environ.get('CLOUDSQL_PASSWORD')
+    cloudsql_unix_socket = os.path.join('/cloudsql', CLOUDSQL_CONNECTION_NAME)
 
     db = MySQLdb.connect(unix_socket=cloudsql_unix_socket, 
                          user=CLOUDSQL_USER, 

@@ -1,28 +1,41 @@
 
 
 templates = {
-            "request": ["request_id",
-                         "request_type",
-                         "arguments",
-                         "user"],
+            "request": {"request_id": int,
+                        "request_type": str,
+                        "arguments": dict,
+                        "user": str
+                        },
 
-            "new_position": ["nw_lat",
-                             "nw_long"]
+            "new_position": {"nw_lat": float,
+                             "nw_long": float
+                             }
             }
 
 
-def find_missing_fields(arguments, request_type):
+def find_error_fields(arguments, request_type):
+
+    errors = []
 
     #----------------------------------------------------------------
-    # Finds all missing fields in a list for that particular 
+    # If an incorrect request type is entered, it will be found
+    # once this is returned in the next bit of code, so checking
+    # here is pointless.
+    #----------------------------------------------------------------
+    if request_type not in templates.keys():
+        return errors
+
+
+    #----------------------------------------------------------------
+    # Finds all errors in fields in a list for that particular 
     # request type, if list is empty at the end then all fields
-    # are present
+    # are present and correct
     #----------------------------------------------------------------
+    for field in templates[request_type].keys():
 
-    missing = []
+        if (field not in arguments or 
+            type(arguments[field]) != templates[request_type][field]):
 
-    for field in templates[request_type]:
-        if field not in arguments:
-            missing.append(field)
+            errors.append(field)
 
-    return missing
+    return errors

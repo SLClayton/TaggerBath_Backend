@@ -1,8 +1,11 @@
 from flask import Flask, jsonify, request
 import logging
+import os
 
-from json_checker import find_missing_fields
+from json_checker import find_error_fields
 from db_manager import getCloudSQL
+
+import MySQLdb
 
 LAT_SCALE = float(os.environ.get("LAT_SCALE"))
 LONG_SCALE = float(os.environ.get("LONG_SCALE"))
@@ -13,18 +16,18 @@ def api_request(request):
 	#----------------------------------------------------------------
 	# Check request JSON has all needed fields
 	#----------------------------------------------------------------
-	missing_fields = find_missing_fields(request, "request")
-	if missing_fields != []:
-		return incomplete_json_request(request, missing_fields)
+	error_fields = find_error_fields(request, "request")
+	if error_fields != []:
+		return incomplete_json_request(request, error_fields)
+
 
 	#----------------------------------------------------------------
 	# Check arguments JSON for specific request type has all
 	# needed fields
 	#----------------------------------------------------------------
-	missing_arguments = find_missing_fields(request["arguments"], request["request_type"])
-	if missing_arguments != []:
-		return incomplete_json_arguments(request, missing_arguments)
-
+	error_arguments = find_error_fields(request["arguments"], request["request_type"])
+	if error_arguments != []:
+		return incomplete_json_arguments(request, error_arguments)
 
 
 
@@ -41,40 +44,38 @@ def api_request(request):
 
 
 def new_position(request):
-	try:
-		nw_lat = request["arguments"]["nw_lat"]
-		nw_long = request["arguments"]["nw_long"]
+	
+
+
+#	try:
+	nw_lat = request["arguments"]["nw_lat"]
+	nw_long = request["arguments"]["nw_long"]
 
 
 
-		db = getCloudSQL()
-		cursor = db.cursor()
+	db = getCloudSQL()
+	cursor = db.cursor()
 
-		cursor.execute("""SELECT * FROM grid_squares 
-						  WHERE nw_lat >= %s 
-						  AND   nw_lat <  %s 
-						  AND   nw_long <= %s 
-						  AND	nw_long > %s ;""", (nw_lat,
-												    nw_lat - LAT_SCALE,
-												    nw_long,
-												    nw_long + LONG_SCALE))
-		rows = cursor.fetchall()
+	cursor.execute("""SELECT * FROM grid_squares 
+					  WHERE nw_lat >= %s 
+					  AND   nw_lat <  %s 
+					  AND   nw_long <= %s 
+					  AND	nw_long > %s ;""", (nw_lat,
+											    nw_lat + LAT_SCALE,
+											    nw_long,
+											    nw_long - LONG_SCALE))
+	rows = cursor.fetchall()
 
 
 
-	except MySQLdb.Error, e:
-		response = {"request_id": request["request_id"],
-					"outcome": "fail",
-					"message": "MySQL Error: {0}".format(str(e))}
+#	except MySQLdb.Error, e:
+#		response = {"request_id": request["request_id"],
+#					"outcome": "fail",
+#					"message": "MySQL Error: {0}".format(str(e))}
+#
+#		return response
 
-		return response
-
-	except Exception as e:
-		response = {"request_id": request["request_id"],
-					"outcome": "fail",
-					"message": "Error in new_position: {0}".format(str(e))}
-
-		return response
+	
 
 
 
@@ -108,13 +109,13 @@ def incomplete_json_request(request, missing_fields):
 
 	response = {"request_id": rid,
 				"outcome": "fail",
-				"message": "Incomplete json request, missing field/s " + str(missing_fields)}
+				"message": "Incomplete json request, missing/wrong datatype field/s " + str(missing_fields) + str(type(request["user"]))}
 
 	return response
 
 def incomplete_json_arguments(request, missing_arguments):
 	response = {"request_id": request["request_id"],
 				"outcome": "fail",
-				"message": "Incomplete json arguments for {0}, missing field/s ".format(request["request_type"]) + str(missing_arguments)}
+				"message": "Incomplete json arguments for '{0}', missing/wrong datatype field/s ".format(request["request_type"]) + str(missing_arguments)}
 
 	return response
