@@ -31,13 +31,13 @@ def find_error_fields(arguments, request_type):
     # request type, if list is empty at the end then all fields
     # are present and correct
     #----------------------------------------------------------------
-    for field in templates[request_type].keys():
+    # for field in templates[request_type].keys():
 
-        if field not in arguments.keys():
-            errors.append(field)
+    #     if field not in arguments.keys():
+    #         errors.append(field)
 
-        elif type(arguments[field]) != templates[request_type][field]:
-            errors.append(field)
+    #     elif type(arguments[field]) != templates[request_type][field]:
+    #         errors.append(field)
 
 
     return errors
