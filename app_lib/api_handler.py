@@ -1,11 +1,13 @@
-from flask import Flask, jsonify, request
 import logging
 import os
 
+from flask import Flask, jsonify, request
 from json_checker import find_error_fields
 from db_manager import getCloudSQL
-
 import MySQLdb
+
+import grid
+
 
 LAT_SCALE = float(os.environ.get("LAT_SCALE"))
 LONG_SCALE = float(os.environ.get("LONG_SCALE"))
@@ -44,47 +46,18 @@ def api_request(request):
 
 
 def new_position(request):
-	
-
-
-#	try:
 	nw_lat = request["arguments"]["nw_lat"]
 	nw_long = request["arguments"]["nw_long"]
 
 
 
-	db = getCloudSQL()
-	cursor = db.cursor()
-
-	cursor.execute("""SELECT * FROM grid_squares 
-					  WHERE nw_lat >= %s 
-					  AND   nw_lat <  %s 
-					  AND   nw_long <= %s 
-					  AND	nw_long > %s ;""", (nw_lat,
-											    nw_lat + LAT_SCALE,
-											    nw_long,
-											    nw_long - LONG_SCALE))
-	rows = cursor.fetchall()
-
-
-
-#	except MySQLdb.Error, e:
-#		response = {"request_id": request["request_id"],
-#					"outcome": "fail",
-#					"message": "MySQL Error: {0}".format(str(e))}
-#
-#		return response
-
+	grid.getGridSquare(nw_lat, nw_long)
 	
-
-
-
-
 
 
 	response = {"request_id": request["request_id"],
 				"outcome": "success",
-				"message": "first row: " + str(rows[0])}
+				"message": "Working so far"}
 
 	return response
 

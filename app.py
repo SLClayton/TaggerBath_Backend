@@ -43,7 +43,6 @@ def api_router():
         lineno = exc_traceback.tb_lineno
         name = exc_traceback.tb_frame.f_code.co_name
         typ = exc_type.__name__
-        message = traceback._some_str()
         message2 = exc_value.message
         
 
@@ -55,11 +54,11 @@ def api_router():
         response = {"request_id": rid,
                     "outcome": "fail",
                     "message": "{3} in {2} in file {0} at line {1}. {4}. {5}".format(filename,
-                                                                                lineno,
-                                                                                name,
-                                                                                typ,
-                                                                                message,
-                                                                                message2)}
+                                                                                     lineno,
+                                                                                     name,
+                                                                                     typ,
+                                                                                     str(e),
+                                                                                     message2)}
 
 
     return jsonify(response)
