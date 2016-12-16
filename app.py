@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 
 from flask import Flask, jsonify, request
 import logging
@@ -58,7 +59,10 @@ def api_router():
                                                                                      name,
                                                                                      typ,
                                                                                      str(e),
-                                                                                     message2)}
+                                                                                     message2),
+                    "tb": traceback.extract_stack()}
+
+        
 
 
     return jsonify(response)
