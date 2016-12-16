@@ -33,8 +33,11 @@ def find_error_fields(arguments, request_type):
     #----------------------------------------------------------------
     for field in templates[request_type].keys():
 
-        if (field not in arguments.keys() or type(arguments[field]) != templates[request_type][field]):
-
+        if field not in arguments.keys():
             errors.append(field)
+
+        elif type(arguments[field]) != templates[request_type][field]:
+            errors.append(field)
+
 
     return errors
