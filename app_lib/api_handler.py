@@ -11,6 +11,7 @@ import grid
 
 LAT_SCALE = float(os.environ.get("LAT_SCALE"))
 LONG_SCALE = float(os.environ.get("LONG_SCALE"))
+GRID_TABLE = os.environ.get("GRID_TABLE")
 
 
 def api_request(request):
@@ -51,13 +52,16 @@ def new_position(request):
 
 
 
-	grid.getGridSquare(nw_lat, nw_long)
-	
+	square = grid.getGridSquare(nw_lat, nw_long)
 
+	square.team = "blue"
+
+	square.update()
+	
 
 	response = {"request_id": request["request_id"],
 				"outcome": "success",
-				"message": "Working so far"}
+				"message": str(square)}
 
 	return response
 
