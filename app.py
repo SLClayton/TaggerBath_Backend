@@ -33,7 +33,7 @@ def api_router():
             response = api_request(json)
 
         else:
-            response = {"request_id": "NA",
+            response = {"request_id": "Not given",
                         "outcome": "fail",
                         "message": "Json missing from request"}
 

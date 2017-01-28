@@ -4,6 +4,7 @@ from db_manager import getCloudSQL
 
 LAT_SCALE = float(os.environ.get("LAT_SCALE"))
 LONG_SCALE = float(os.environ.get("LONG_SCALE"))
+CLOUDSQL_DB = os.environ.get("CLOUDSQL_DB")
 GRID_TABLE = os.environ.get("GRID_TABLE")
 
 
@@ -19,10 +20,10 @@ class GridSquare:
 
     def __str__(self):
         return "_id: {0} at ({1}, {2}) {3} team level {4}.".format(self._id,
-                                                                 self.nw_lat,
-                                                                 self.nw_long,
-                                                                 self.team,
-                                                                 self.level)
+                                                                   self.nw_lat,
+                                                                   self.nw_long,
+                                                                   self.team,
+                                                                   self.level)
 
     def update(self):
         #----------------------------------------------------------------
@@ -32,10 +33,10 @@ class GridSquare:
         db = getCloudSQL()
         cursor = db.cursor()
 
-        cursor.execute ("""UPDATE {0} 
+        cursor.execute ("""UPDATE {0}.{1} 
                            SET team = %s, 
                                level = %s
-                           WHERE _id = %s""".format(GRID_TABLE), 
+                           WHERE _id = %s ;""".format(CLOUDSQL_DB, GRID_TABLE), 
                                             (self.team, 
                                              self.level, 
                                              self._id))
@@ -54,22 +55,60 @@ def getGridSquare(lat, lon):
     db = getCloudSQL()
     cursor = db.cursor()
 
-    cursor.execute("""SELECT * FROM {0} 
+    cursor.execute("""SELECT * FROM {0}.{1} 
                       WHERE nw_lat >= %s 
                       and nw_lat < %s 
                       and nw_long <= %s
-                      and nw_long > %s ;""".format(GRID_TABLE),
+                      and nw_long > %s ;""".format(CLOUDSQL_DB, GRID_TABLE),
                                             (lat, 
                                              lat + LAT_SCALE,
                                              lon,
                                              lon - LONG_SCALE))
 
-    rows = cursor.fetchall()
-
+    row = cursor.fetchone()
 
     #----------------------------------------------------------------
     # This makes sure the co-ordinates are within the entire area
     #----------------------------------------------------------------
-    assert len(rows) != 0
+    assert row is not None
 
-    return GridSquare(*rows[0])
+    return GridSquare(*row)
+
+
+def getGrid(nw_lat, nw_long, se_lat, se_long):
+    #----------------------------------------------------------------
+    # returns entire map
+    #----------------------------------------------------------------
+    db = getCloudSQL()
+    cursor = db.cursor()
+
+
+    cursor.execute("""SELECT * FROM {0}.{1}
+                      WHERE nw_lat >= %s 
+                      and nw_lat < %s 
+                      and nw_long <= %s
+                      and nw_long > %s ;""".format(CLOUDSQL_DB, GRID_TABLE),
+                                            (se_lat,
+                                             nw_lat,
+                                             se_long,
+                                             nw_long))
+
+
+    grid = []
+    for row in cursor.fetchall():
+        square = []
+        #square.append(row[0])
+        square.append(float(row[1]))
+        square.append(float(row[2]))
+        square.append(row[3])
+        #square.append(row[4])
+
+        grid.append(square)
+
+
+
+    return grid
+
+
+
+

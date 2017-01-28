@@ -15,8 +15,11 @@ env_variables:
   CLOUDSQL_CONNECTION_NAME: landgrab-151015:europe-west1:landgrab
   CLOUDSQL_USER: root
   CLOUDSQL_PASSWORD: donut
-
-  GRID_TABLE: landgrab_db.grid_squares
+  CLOUDSQL_DB: landgrab_db
+  GRID_TABLE: grid_squares
+  USER_TABLE: users
 
   LAT_SCALE: 0.000180
   LONG_SCALE: 0.000288
+
+  MAX_LEVEL: 3
