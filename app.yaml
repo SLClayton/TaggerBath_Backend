@@ -20,6 +20,6 @@ env_variables:
   USER_TABLE: users
 
   LAT_SCALE: 0.000180
-  LONG_SCALE: 0.000288
+  LNG_SCALE: 0.000288
 
   MAX_LEVEL: 3

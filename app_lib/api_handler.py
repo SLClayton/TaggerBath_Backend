@@ -12,7 +12,7 @@ from user import User, getUser
 
 
 LAT_SCALE = float(os.environ.get("LAT_SCALE"))
-LONG_SCALE = float(os.environ.get("LONG_SCALE"))
+LNG_SCALE = float(os.environ.get("LNG_SCALE"))
 
 
 def api_request(request):
@@ -56,14 +56,14 @@ def new_position(request):
 	#----------------------------------------------------------------
 	username = request["user"]
 	nw_lat = request["arguments"]["nw_lat"]
-	nw_long = request["arguments"]["nw_long"]
+	nw_lng = request["arguments"]["nw_lng"]
 
 
 	#----------------------------------------------------------------
 	# Checking user is in area and gets specific square
 	#----------------------------------------------------------------
 	try:
-		square = grid.getGridSquare(nw_lat, nw_long)
+		square = grid.getGridSquare(nw_lat, nw_lng)
 
 	except AssertionError:
 		response = {"request_id": request["request_id"],
@@ -106,12 +106,12 @@ def new_position(request):
 
 def get_grid(request):
 	nw_lat = request["arguments"]["nw_lat"]
-	nw_long = request["arguments"]["nw_long"]
+	nw_lng = request["arguments"]["nw_lng"]
 	se_lat = request["arguments"]["se_lat"]
-	se_long =request["arguments"]["se_long"]
+	se_lng =request["arguments"]["se_lng"]
 
 	try:
-		g = grid.getGrid(nw_lat, nw_long, se_lat, se_long)
+		g = grid.getGrid(nw_lat, nw_lng, se_lat, se_lng)
 
 		response = {"request_id": request["request_id"],
 					"outcome": "success",

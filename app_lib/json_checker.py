@@ -9,13 +9,13 @@ templates = {
                         },
 
             "new_position": {"nw_lat": float,
-                             "nw_long": float
+                             "nw_lng": float
                              },
 
             "get_grid": {"nw_lat": float,
-                        "nw_long": float,
+                        "nw_lng": float,
                         "se_lat": float,
-                        "se_long": float
+                        "se_lng": float
                         }
             }
 
