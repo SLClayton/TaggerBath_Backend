@@ -3,12 +3,13 @@ import os
 import sys
 
 from flask import Flask, jsonify, request
-from json_checker import find_error_fields
+from json_checker import find_error_fields, need_verification
 from db_manager import getCloudSQL
 import MySQLdb
 
 import grid
-from user import User, getUser
+import facebook
+from user import User, getUser, is_username_taken, createUser
 
 
 LAT_SCALE = float(os.environ.get("LAT_SCALE"))
@@ -18,45 +19,59 @@ LNG_SCALE = float(os.environ.get("LNG_SCALE"))
 def api_request(request):
 
 	#----------------------------------------------------------------
-	# Check request JSON has all needed fields
+	# Check request JSON has no missing fields, correct types etc
 	#----------------------------------------------------------------
-	error_fields = find_error_fields(request, "request")
-	if error_fields != []:
-		return incomplete_json_request(request, error_fields)
+	errors = find_error_fields(request, "request")
+	if errors != []:
+		return incomplete_json_request(request, errors)
 
 
 	#----------------------------------------------------------------
-	# Check arguments JSON for specific request type has all
-	# needed fields
+	# check user exists and access token is correct
 	#----------------------------------------------------------------
-	error_arguments = find_error_fields(request["arguments"], request["request_type"])
-	if error_arguments != []:
-		return incomplete_json_arguments(request, error_arguments)
+	if (request["request_type"] in need_verification and 
+		not facebook.verify_token(request["fb_id"], request["userAccessToken"])):
 
+		return invalidAccessToken(request)
+
+
+	#----------------------------------------------------------------
+	# If request doesn't need the user, go straight there
+	#----------------------------------------------------------------
+	if request["request_type"] == "create_user":
+		return create_user(request)
+
+
+	#----------------------------------------------------------------
+	# Otherwise, check user is signed up
+	#----------------------------------------------------------------
+	user = getUser("fb_id", request["fb_id"])
+	if user is None:
+		return invalid_user()
 
 
 	#----------------------------------------------------------------
 	# Route request to correct function
 	#----------------------------------------------------------------
 	if request["request_type"] == "new_position":
-		return new_position(request)
+		return new_position(request, user)
 
 	elif request["request_type"] == "get_grid":
 		return get_grid(request)
+
+	elif request["request_type"] == "get_user_info":
+		return get_user_info(request, user)
 
 	else:
 		return invalid_request(request)
 
 
-
-
-def new_position(request):
+def new_position(request, user):
 	#----------------------------------------------------------------
 	# Unpacks some useful arguments
 	#----------------------------------------------------------------
-	username = request["user"]
-	nw_lat = request["arguments"]["nw_lat"]
-	nw_lng = request["arguments"]["nw_lng"]
+	nw_lat = request["nw_lat"]
+	nw_lng = request["nw_lng"]
 
 
 	#----------------------------------------------------------------
@@ -66,22 +81,8 @@ def new_position(request):
 		square = grid.getGridSquare(nw_lat, nw_lng)
 
 	except AssertionError:
-		response = {"request_id": request["request_id"],
-					"outcome": "fail",
+		response = {"outcome": "fail",
 					"message": "Could not find square for ({0}, {1}), may be outside bounds"}
-		return response
-
-
-	#----------------------------------------------------------------
-	# Checking user exists and gets User object
-	#----------------------------------------------------------------
-	try:
-		user = getUser(username)
-
-	except AssertionError:
-		response = {"request_id": request["request_id"],
-					"outcome": "fail",
-					"message": "Invalid user '{0}'".format(username)}
 		return response
 	
 
@@ -93,65 +94,110 @@ def new_position(request):
 	square.update()
 		
 
-
-	response = {"request_id": request["request_id"],
-				"outcome": "success",
+	response = {"outcome": "success",
 				"message": "Updated square id({0}) from team {1} to {2} with user {3}".format(square._id,
 																			    			  oldteam,
 																	                          square.team,
-																	                          user.name)}
+																	                          user.name),
+				"updated_square": {"nw_lat": square.nw_lat,
+								   "nw_lng": square.nw_lng,
+								   "team": square.team
+								   }
+				}
 
 
 	return response
 
+
 def get_grid(request):
-	nw_lat = request["arguments"]["nw_lat"]
-	nw_lng = request["arguments"]["nw_lng"]
-	se_lat = request["arguments"]["se_lat"]
-	se_lng =request["arguments"]["se_lng"]
+	nw_lat = request["nw_lat"]
+	nw_lng = request["nw_lng"]
+	se_lat = request["se_lat"]
+	se_lng =request["se_lng"]
 
 	try:
 		g = grid.getGrid(nw_lat, nw_lng, se_lat, se_lng)
 
-		response = {"request_id": request["request_id"],
-					"outcome": "success",
+		response = {"outcome": "success",
 					"grid":	g,
 					"length": len(g),
 					"message": "Grid successfully gotten."}
 
 	except Exception as e:
-		response = {"request_id": request["request_id"],
-					"outcome": "fail",
+		response = {"outcome": "fail",
 					"message": "Failed to get grid. " + str(e)}
 
 	return response
 
 
+def get_user_info(request, user):
+
+	response = {"outcome": "success",
+				"message": "Successfully gotten user info for '{0}'".format(username),
+				"user_info": {	"name": user.name,
+								"team": user.team,
+								"email": user.email,
+								"fb_id": user.fb_id
+								}
+			}
+		
+	return response
+
+
+def create_user(request):
+
+	name = request["name"]
+	email = request["email"]
+	team = "blue"
+	fb_id = request["fb_id"]
+
+
+	if is_username_taken(name):
+		response = {"outcome": "fail",
+					"error_code": 1,
+					"message": "Username '{0}' taken".format(name)}
+
+	else:
+
+		try:
+			createUser(name, team, email, fb_id)
+
+			response = {"outcome": "success",
+						"message": "Created user {0}".format(str(getUser("fb_id", fb_id)))}
+
+
+		except Exception as e:
+			response = {"outcome": "fail",
+						"message": "Failed to create user '{0}' - {1}".format(name, str(e))}
+
+
+	return response 
 
 
 
 def invalid_request(request):
-	response = {"request_id": request["request_id"],
-				"outcome": "fail",
+	response = {"outcome": "fail",
 				"message": "Invalid request '{0}'".format(request["request_type"])}
 
 	return response
 
 def incomplete_json_request(request, missing_fields):
-	if "request_id" in missing_fields:
-		rid = "Not given"
-	else:
-		rid = request["request_id"]
-
-	response = {"request_id": rid,
-				"outcome": "fail",
+	response = {"outcome": "fail",
 				"message": "Incomplete json request, missing/wrong datatype field/s " + str(missing_fields)}
 
 	return response
 
-def incomplete_json_arguments(request, missing_arguments):
-	response = {"request_id": request["request_id"],
-				"outcome": "fail",
-				"message": "Incomplete json arguments for '{0}', missing/wrong datatype field/s ".format(request["request_type"]) + str(missing_arguments)}
+
+def invalid_user():
+	response = {"outcome": "fail",
+				"message": "Invalid user not signed up"}
+
+	return response
+
+def invalidAccessToken(request):
+	fb_id = request["fb_id"]
+
+	response = {"outcome": "fail",
+				"message": "Invalid/out of date fb_id / access token for fb_id '{0}'".format(fb_id)}
 
 	return response

@@ -5,7 +5,9 @@ import traceback
 from flask import Flask, jsonify, request
 import logging
 
+
 from app_lib.api_handler import api_request
+
 
 app = Flask(__name__)
 app.config["DEBUG"] = True
@@ -23,50 +25,57 @@ def test():
     return "Success! This message has been sent from the server!"
 
 
-
 @app.route('/api', methods=["GET", "POST"])
 def api_router():
-    try:
-        if request.get_json():
 
-            json = uni_to_utf8(request.get_json())
-            response = api_request(json)
+    if request.get_json():
 
-        else:
-            response = {"request_id": "Not given",
-                        "outcome": "fail",
-                        "message": "Json missing from request"}
+        json = uni_to_utf8(request.get_json())
+
+        # try:
+        response = api_request(json)
+
+        # except Exception as e:
+        #     (exc_type, exc_value, exc_traceback) = sys.exc_info()
+        #     filename = exc_traceback.tb_frame.f_code.co_filename
+        #     lineno = exc_traceback.tb_lineno
+        #     name = exc_traceback.tb_frame.f_code.co_name
+        #     typ = exc_type.__name__
+        #     message2 = exc_value.message
+            
+
+        #     if request.get_json()["request_id"]:
+        #         rid = request.get_json()["request_id"]
+        #     else:
+        #         rid = "Not given"
+
+        #     response = {"request_id": rid,
+        #                 "outcome": "fail",
+        #                 "message": "{3} in {2} in file {0} at line {1}. {4}. {5}".format(filename,
+        #                                                                                  lineno,
+        #                                                                                  name,
+        #                                                                                  typ,
+        #                                                                                  str(e),
+        #                                                                                  message2),
+        #                 "tb": traceback.extract_stack()}
 
 
-    except Exception as e:
-        (exc_type, exc_value, exc_traceback) = sys.exc_info()
-        filename = exc_traceback.tb_frame.f_code.co_filename
-        lineno = exc_traceback.tb_lineno
-        name = exc_traceback.tb_frame.f_code.co_name
-        typ = exc_type.__name__
-        message2 = exc_value.message
-        
+    else:
+        response = {"outcome": "fail",
+                    "message": "Json missing from request"}
 
-        if request.get_json()["request_id"]:
-            rid = request.get_json()["request_id"]
-        else:
-            rid = "Not given"
 
-        response = {"request_id": rid,
-                    "outcome": "fail",
-                    "message": "{3} in {2} in file {0} at line {1}. {4}. {5}".format(filename,
-                                                                                     lineno,
-                                                                                     name,
-                                                                                     typ,
-                                                                                     str(e),
-                                                                                     message2),
-                    "tb": traceback.extract_stack()}
+    
+    if request.get_json() and request.get_json()["request_id"]:
+        rid = request.get_json()["request_id"]
+    else:
+        rid = "Not given"
 
-        
+    response["request_id"] = rid             
+    
 
 
     return jsonify(response)
-
 
 
 
@@ -88,7 +97,7 @@ def uni_to_utf8(json):
     #----------------------------------------------------------------
     # I thought changing all the nested unicode strings to utf-8
     # would solve a bug, it may or may not have but I'm leaving
-    # it in.
+    # it in just in case it did.
     #----------------------------------------------------------------
 
     for field in json.keys():
