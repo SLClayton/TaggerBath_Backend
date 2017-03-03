@@ -18,9 +18,17 @@ env_variables:
   CLOUDSQL_DB: landgrab_db
   GRID_TABLE: grid_squares
   USER_TABLE: users
+  USER_ITEMS_TABLE: user_items
+  ACCESS_TOKEN_TABLE: accessTokens
 
-  LAT_SCALE: 0.000180
-  LNG_SCALE: 0.000288
+  LAT_SCALE: 0.000270
+  LNG_SCALE: 0.000432
+
+  MAX_STACK: 2
+
+  TEAMS: red,green,blue
+
+  ITEMS: d
 
   FACEBOOK_APP_ID: 772280542937420
   FACEBOOK_APP_SECRET: 6e5f68c251907d0a121a242bd421f520

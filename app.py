@@ -1,6 +1,7 @@
 import os
 import sys
 import traceback
+import time
 
 from flask import Flask, jsonify, request
 import logging
@@ -28,36 +29,12 @@ def test():
 @app.route('/api', methods=["GET", "POST"])
 def api_router():
 
+    t0 = time.time()
+
     if request.get_json():
 
         json = uni_to_utf8(request.get_json())
-
-        # try:
         response = api_request(json)
-
-        # except Exception as e:
-        #     (exc_type, exc_value, exc_traceback) = sys.exc_info()
-        #     filename = exc_traceback.tb_frame.f_code.co_filename
-        #     lineno = exc_traceback.tb_lineno
-        #     name = exc_traceback.tb_frame.f_code.co_name
-        #     typ = exc_type.__name__
-        #     message2 = exc_value.message
-            
-
-        #     if request.get_json()["request_id"]:
-        #         rid = request.get_json()["request_id"]
-        #     else:
-        #         rid = "Not given"
-
-        #     response = {"request_id": rid,
-        #                 "outcome": "fail",
-        #                 "message": "{3} in {2} in file {0} at line {1}. {4}. {5}".format(filename,
-        #                                                                                  lineno,
-        #                                                                                  name,
-        #                                                                                  typ,
-        #                                                                                  str(e),
-        #                                                                                  message2),
-        #                 "tb": traceback.extract_stack()}
 
 
     else:
@@ -71,9 +48,10 @@ def api_router():
     else:
         rid = "Not given"
 
-    response["request_id"] = rid             
-    
 
+    response["request_id"] = rid
+    response["a_time"] = str(time.time() - t0)           
+    
 
     return jsonify(response)
 

@@ -18,13 +18,26 @@ templates = {
                         },
 
             "create_user": {"name": str,
-                            "email": str,},
+                            "email": str,
+                            },
 
-            "check_name_exists":{"name": str}
+            "check_name_exists":{"name": str
+                                },
+
+            "get_grid_square":{"nw_lat": float,
+                               "nw_lng": float
+                               },
+
+            "get_leaderboard_current_captures": {},
+
+            "get_scale": {}
 
             }
 
-need_verification = ["create_user", "new_position"]
+need_verification = ["create_user", 
+                     "new_position",
+                     "get_user_info"
+                     ]
 
 
 def find_error_fields(arguments, request_type):

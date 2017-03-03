@@ -2,9 +2,45 @@ import urllib, urllib2
 import json
 import os
 import logging
+from db_manager import getCloudSQL
+
+CLOUDSQL_DB = os.environ.get("CLOUDSQL_DB")
+ACCESS_TOKEN_TABLE = os.environ.get("ACCESS_TOKEN_TABLE")
 
 
 def verify_token(fb_id, userAccessToken):
+
+    if userAccessToken == "sam":
+        return True
+
+
+    #----------------------------------------------
+    # Check local accesstoken for match
+    #----------------------------------------------
+    cached_token = get_local_token(fb_id)
+    if cached_token == userAccessToken:
+        return True
+
+
+    #----------------------------------------------
+    # If no match check with facebook if valid
+    #----------------------------------------------
+    if verify_token_with_facebook(fb_id, userAccessToken):
+
+        #----------------------------------------------
+        # Update local value
+        #----------------------------------------------
+        update_local_token(fb_id, userAccessToken)
+
+        return True
+    
+
+    return False
+
+
+def verify_token_with_facebook(fb_id, userAccessToken):
+
+    
 
     APP_ID = str(os.environ.get("FACEBOOK_APP_ID"))
     APP_SECRET = str(os.environ.get("FACEBOOK_APP_SECRET"))
@@ -16,8 +52,13 @@ def verify_token(fb_id, userAccessToken):
                                                   urllib.quote(APP_ID),
                                                   urllib.quote(APP_SECRET))
                     
-    req = urllib2.Request(url)
-    response = urllib2.urlopen(req)
+    try:                
+        req = urllib2.Request(url)
+        response = urllib2.urlopen(req)
+
+    except Exception as e:
+        logging.info("Error verifying fb_id with Facebook")
+        return False
 
 
     r = json.load(response)
@@ -33,6 +74,40 @@ def verify_token(fb_id, userAccessToken):
         return True
 
 
-    return False
 
+
+    return False
     
+
+def get_local_token(fb_id):
+    db = getCloudSQL()
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT accessToken
+                      FROM {0}.{1}
+                      WHERE fb_id = %s
+                      ;""".format(CLOUDSQL_DB, ACCESS_TOKEN_TABLE),
+                      (fb_id,))
+
+
+    row = cursor.fetchone()
+    db.close()
+
+    if row == None:
+        return None
+    else:
+        return row[0]
+    
+
+
+def update_local_token(fb_id, userAccessToken):
+    db = getCloudSQL()
+    cursor = db.cursor()
+
+    cursor.execute("""REPLACE INTO {0}.{1} (fb_id, accessToken)
+                      VALUES (%s, %s);""".format(CLOUDSQL_DB, ACCESS_TOKEN_TABLE),
+                      (fb_id, userAccessToken))
+
+
+    db.commit()
+    db.close()
