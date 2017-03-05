@@ -8,34 +8,7 @@ CLOUDSQL_DB = os.environ.get("CLOUDSQL_DB")
 ACCESS_TOKEN_TABLE = os.environ.get("ACCESS_TOKEN_TABLE")
 
 
-def verify_token(fb_id, userAccessToken):
 
-    if userAccessToken == "sam":
-        return True
-
-
-    #----------------------------------------------
-    # Check local accesstoken for match
-    #----------------------------------------------
-    cached_token = get_local_token(fb_id)
-    if cached_token == userAccessToken:
-        return True
-
-
-    #----------------------------------------------
-    # If no match check with facebook if valid
-    #----------------------------------------------
-    if verify_token_with_facebook(fb_id, userAccessToken):
-
-        #----------------------------------------------
-        # Update local value
-        #----------------------------------------------
-        update_local_token(fb_id, userAccessToken)
-
-        return True
-    
-
-    return False
 
 
 def verify_token_with_facebook(fb_id, userAccessToken):
@@ -91,14 +64,13 @@ def get_local_token(fb_id):
 
 
     row = cursor.fetchone()
-    db.close()
+    cursor.close()
 
     if row == None:
         return None
     else:
         return row[0]
     
-
 
 def update_local_token(fb_id, userAccessToken):
     db = getCloudSQL()
@@ -108,6 +80,5 @@ def update_local_token(fb_id, userAccessToken):
                       VALUES (%s, %s);""".format(CLOUDSQL_DB, ACCESS_TOKEN_TABLE),
                       (fb_id, userAccessToken))
 
-
+    cursor.close()
     db.commit()
-    db.close()

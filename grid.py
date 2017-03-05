@@ -1,9 +1,7 @@
 import os
 
-import json
 import logging
 from db_manager import getCloudSQL
-from flask import Flask, jsonify
 
 from user import User, getUser
 
@@ -26,7 +24,6 @@ class GridSquare:
         self.nw_lng = float(nw_lng)
         self.team = team
         self.level = level
-
         self.stack = stack
 
 
@@ -174,8 +171,8 @@ class GridSquare:
                                                      s[3],
                                                      self._id))
 
+        cursor.close()
         db.commit()
-        db.close()
 
 
 
@@ -232,6 +229,7 @@ def getGridSquare(lat, lng):
 
         stack[index] = User(user_id, row[10], row[11], row[12])
 
+    cursor.close()
 
     stack[:] = [i for i in stack if i != None]
 
@@ -254,7 +252,7 @@ def getSpecificGridSquare(lat, lng):
                                              lng))
 
     row = cursor.fetchone()
-
+    cursor.close()
 
     if row == None:
         return None
@@ -296,7 +294,7 @@ def getGrid(nw_lat, nw_lng, se_lat, se_lng):
 
         grid.append(square)
 
-
+    cursor.close()
 
     return grid
 

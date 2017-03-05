@@ -6,12 +6,16 @@ import time
 from flask import Flask, jsonify, request
 import logging
 
-
-from app_lib.api_handler import api_request
+from api_handler import api_request
+from thread import thread_data
 
 
 app = Flask(__name__)
-app.config["DEBUG"] = True
+
+if os.getenv('SERVER_SOFTWARE', '').startswith('Google App Engine/'):
+    app.config["DEBUG"] = False
+else:
+    app.config["DEBUG"] = True
 
 
 
@@ -30,6 +34,8 @@ def test():
 def api_router():
 
     t0 = time.time()
+
+    thread_data.DB = None
 
     if request.get_json():
 
@@ -53,6 +59,7 @@ def api_router():
     response["a_time"] = str(time.time() - t0)           
     
 
+
     return jsonify(response)
 
 
@@ -68,7 +75,6 @@ def server_error(e):
     # Log the error and stacktrace.
     logging.exception('An error occurred during a request.')
     return 'An internal error occurred.', 500
-
 
 
 def uni_to_utf8(json):

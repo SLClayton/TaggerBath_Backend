@@ -3,6 +3,7 @@ import logging
 from operator import itemgetter
 
 from db_manager import getCloudSQL
+from facebook import *
 
 
 CLOUDSQL_DB = os.environ.get("CLOUDSQL_DB")
@@ -10,6 +11,7 @@ USER_TABLE = os.environ.get("USER_TABLE")
 USER_ITEMS_TABLE = os.environ.get("USER_ITEMS_TABLE")
 TEAMS = os.environ.get("TEAMS").split(",")
 GRID_TABLE = os.environ.get("GRID_TABLE")
+ACCESS_TOKEN_TABLE = os.environ.get("ACCESS_TOKEN_TABLE")
 
 
 
@@ -62,9 +64,10 @@ class User:
                                                  item,
                                                  self.items[item]))
 
-
+        cursor.close()
         db.commit()
-        db.close()
+
+
 
     def retreive_items_from_db(self, force=False):
         if self.items == None or force:
@@ -97,6 +100,62 @@ class User:
         return get_current_captures(self._id, self.team)
 
 
+def verify_and_get_user(fb_id, userAccessToken):
+
+    if userAccessToken == "sam":
+        return getUser("fb_id", fb_id)
+
+
+
+    #----------------------------------------------
+    # Check local accesstoken for match
+    #----------------------------------------------
+    db = getCloudSQL()
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT u._id, u.fb_id, u.name, u.team, u.email, at.accessToken
+                      FROM      {0}.{1} AS u
+                      LEFT JOIN {0}.{2} AS at
+                      ON u.fb_id = at.fb_id
+
+                      WHERE u.fb_id = %s ;""".format(CLOUDSQL_DB,
+                                                  USER_TABLE,
+                                                  ACCESS_TOKEN_TABLE),
+
+                                                  (fb_id,))
+
+    row = cursor.fetchone()
+    cursor.close()
+
+    if row == None:
+        return [verify_token_with_facebook(fb_id, userAccessToken), None]
+
+
+    user = User(row[0], row[1], row[2], row[3])
+
+    #----------------------------------------------
+    # Check local acccess token
+    #----------------------------------------------
+    if userAccessToken == row[5]:
+        return [True, user]
+
+
+    #----------------------------------------------
+    # If no match check with facebook if valid
+    #----------------------------------------------
+    if verify_token_with_facebook(fb_id, userAccessToken):
+
+        #----------------------------------------------
+        # Update local value
+        #----------------------------------------------
+        update_local_token(fb_id, userAccessToken)
+
+        return [True, user]
+    
+
+
+    return [False, user]
+
 
 def getUser(id_type, value):
     #----------------------------------------------------------------
@@ -115,8 +174,7 @@ def getUser(id_type, value):
                                                   (str(value),))
 
     row = cursor.fetchone()
-
-    db.close()
+    cursor.close()
 
     #----------------------------------------------------------------
     # Return None if user doesn't exist
@@ -142,8 +200,7 @@ def createUser(name, team, email, fb_id):
                                                            fb_id))
 
     db.commit()
-    db.close()
-
+    cursor.close()
 
 def is_username_taken(name):
 
@@ -154,10 +211,9 @@ def is_username_taken(name):
 
     for row in cursor.fetchall():
         if name.lower() == row[0].lower():
-            db.close()
+            cursor.close()
             return True
 
-    db.close()
     return False
 
 
@@ -191,6 +247,7 @@ def get_user_items(user_id):
         items[row[0]] = row[1]
 
 
+    cursor.close()
     return items
 
 
@@ -206,7 +263,7 @@ def least_populous_team():
 
 
     row = cursor.fetchone()
-    db.close()
+    cursor.close()
 
     return TEAMS[row.index(min(row))]
 
@@ -235,7 +292,7 @@ def get_current_captures(user_id, team):
 
 
         row = cursor.fetchone()
-        db.close()
+        cursor.close()
 
         if row[0] == None:
             return 0
@@ -293,8 +350,8 @@ def leaderboard_current_captures(whitelist=None):
                                   GRID_TABLE,
                                   fb_id_where))
 
-    logging.info(cursor._last_executed)
+    leaderboard = cursor.fetchall()
 
-    db.close()
+    cursor.close()
 
-    return cursor.fetchall()
+    return leaderboard

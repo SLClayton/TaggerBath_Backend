@@ -3,16 +3,13 @@ import os
 import sys
 import copy
 
-from flask import Flask, jsonify, request
-from json_checker import find_error_fields, need_verification
-from db_manager import getCloudSQL
-import MySQLdb
 from operator import itemgetter
 
 import grid
-import facebook
+from facebook import *
 from user import *
-
+from json_checker import find_error_fields, need_verification
+from db_manager import getCloudSQL
 
 LAT_SCALE = float(os.environ.get("LAT_SCALE"))
 LNG_SCALE = float(os.environ.get("LNG_SCALE"))
@@ -21,6 +18,7 @@ TEAMS = os.environ.get("TEAMS").split(",")
 CLOUDSQL_DB = os.environ.get("CLOUDSQL_DB")
 USER_TABLE = os.environ.get("USER_TABLE")
 GRID_TABLE = os.environ.get("GRID_TABLE")
+
 
 
 
@@ -34,21 +32,22 @@ def api_request(request):
         return incomplete_json_request(request, errors)
 
 
-    #----------------------------------------------------------------
-    # check user exists and access token is correct
-    #----------------------------------------------------------------
-    if (request["request_type"] in need_verification and 
-        not facebook.verify_token(request["fb_id"], request["userAccessToken"])):
-
-        return invalidAccessToken(request)
-
 
     #----------------------------------------------------------------
-    # If request doesn't need the user, go straight there
+    # create_user needs fb login, but not an active account. Special
+    # case
     #----------------------------------------------------------------
     if request["request_type"] == "create_user":
-        return create_user(request)
 
+        if facebook.verify_token(request["fb_id"], request["userAccessToken"]):
+            return create_user(request)
+
+        else:
+            return invalidAccessToken(request)
+
+    #----------------------------------------------------------------
+    # If request doesn't need a user, go straight there
+    #----------------------------------------------------------------
     elif request["request_type"] == "get_grid":
         return get_grid(request)
 
@@ -62,16 +61,20 @@ def api_request(request):
         return get_scale()
 
 
+
     #----------------------------------------------------------------
-    # Otherwise, check user is signed up
+    # Get user and check access token is correct
     #----------------------------------------------------------------
-    user = getUser("fb_id", request["fb_id"])
-    if user is None:
+    [verified_token, user] = verify_and_get_user(request["fb_id"], request["userAccessToken"])
+
+    if not verified_token:
+        return invalidAccessToken(request)
+    elif user == None:
         return invalid_user()
 
 
     #----------------------------------------------------------------
-    # Route request to correct function
+    # Route remaining requests and user to functions
     #----------------------------------------------------------------
     if request["request_type"] == "new_position":
         return new_position(request, user)
@@ -79,8 +82,8 @@ def api_request(request):
     elif request["request_type"] == "get_user_info":
         return get_user_info(request, user)
 
-    else:
-        return invalid_request(request)
+    
+    return invalid_request(request)
 
 
 
@@ -94,6 +97,7 @@ def get_scale():
 
 
 def new_position(request, user):
+
     #----------------------------------------------------------------
     # Unpacks some useful arguments
     #----------------------------------------------------------------
@@ -105,6 +109,7 @@ def new_position(request, user):
     # Checking user is in area and gets specific square
     #----------------------------------------------------------------
     square = grid.getGridSquare(nw_lat, nw_lng)
+
 
     if square == None:
         response = {"outcome": "fail",
@@ -297,6 +302,6 @@ def invalidAccessToken(request):
     fb_id = request["fb_id"]
 
     response = {"outcome": "fail",
-                "message": "Invalid/out of date fb_id / access token for fb_id '{0}'".format(fb_id)}
+                "message": "Invalid or out of date fb_id & access token for fb_id '{0}'".format(fb_id)}
 
     return response
