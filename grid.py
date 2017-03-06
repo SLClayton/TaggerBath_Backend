@@ -17,7 +17,7 @@ TEAMS = os.environ.get("TEAMS").split(",")
 
 class GridSquare:
 
-    def __init__(self, _id, nw_lat, nw_lng, team, level, stack=None):
+    def __init__(self, _id, nw_lat, nw_lng, team, level, stack):
 
         self._id = _id
         self.nw_lat = float(nw_lat)
@@ -129,8 +129,9 @@ class GridSquare:
 
     def get_stack_string(self):
         l = []
+
         for user in self.stack:
-            l.append(user.team.upper() + "|" + user.name)
+            l.append(str(user.team).upper() + "|" + str(user.name))
 
         return str(l)
 
@@ -190,7 +191,7 @@ def getGridSquare(lat, lng):
                       u._id,         u.fb_id,   u.name,    u.team
 
                       FROM {0}.{1} AS gs
-                      JOIN {0}.{2} AS u
+                      LEFT JOIN {0}.{2} AS u
 
                       ON gs.stack1 = u._id
                       OR gs.stack2 = u._id
@@ -209,29 +210,35 @@ def getGridSquare(lat, lng):
                                              lng - LNG_SCALE))
 
 
+    #----------------------------------------------------------------
+    # Return None if no rows found
+    #----------------------------------------------------------------
     if cursor.rowcount < 1:
         return None
+
 
     stack = [None, None, None, None]
 
     for row in cursor.fetchall():
         user_id = row[9]
 
-        if user_id == row[5]:
-            index = 0
-        elif user_id == row[6]:
-            index = 1
-        elif user_id == row[7]:
-            index = 2
-        elif user_id == row[8]:
-            index = 3
+        if user_id is not None:
+            
+            if user_id == row[5]:
+                index = 0
+            elif user_id == row[6]:
+                index = 1
+            elif user_id == row[7]:
+                index = 2
+            elif user_id == row[8]:
+                index = 3
 
-
-        stack[index] = User(user_id, row[10], row[11], row[12])
+            stack[index] = User(user_id, row[10], row[11], row[12])
 
     cursor.close()
 
-    stack[:] = [i for i in stack if i != None]
+    while None in stack:
+        stack.remove(None)
 
     return GridSquare(row[0], row[1], row[2], row[3], row[4], stack)
 

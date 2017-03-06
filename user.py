@@ -103,7 +103,7 @@ class User:
 def verify_and_get_user(fb_id, userAccessToken):
 
     if userAccessToken == "sam":
-        return getUser("fb_id", fb_id)
+        return [True, getUser("fb_id", fb_id)]
 
 
 

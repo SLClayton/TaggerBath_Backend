@@ -1,31 +1,8 @@
 import os
 import MySQLdb
+import logging
 
-from thread import thread_data
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+from threaddata import thread_data
 
 
 
@@ -39,12 +16,15 @@ cloudsql_unix_socket = os.path.join('/cloudsql', CLOUDSQL_CONNECTION_NAME)
 
 def getCloudSQL():
 
-    DB = getattr(thread_data, 'DB', None)
+    thread_data.DB_access += 1
 
-    if DB is None:
+    if thread_data.DB is None:
+        logging.info("DB is None, Creating one")
         thread_data.DB = _getCloudSQL()
+    else:
+        logging.info("DB not None, re-using")
 
-    return DB
+    return thread_data.DB
 
 
 

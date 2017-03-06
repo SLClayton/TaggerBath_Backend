@@ -7,7 +7,7 @@ from flask import Flask, jsonify, request
 import logging
 
 from api_handler import api_request
-from thread import thread_data
+from threaddata import thread_data
 
 
 app = Flask(__name__)
@@ -36,11 +36,14 @@ def api_router():
     t0 = time.time()
 
     thread_data.DB = None
+    thread_data.DB_access = 0
 
     if request.get_json():
 
         json = uni_to_utf8(request.get_json())
         response = api_request(json)
+        if "sendback" in json:
+            response["a_request"] = json
 
 
     else:
@@ -56,9 +59,14 @@ def api_router():
 
 
     response["request_id"] = rid
-    response["a_time"] = str(time.time() - t0)           
+    response["DB_access"] = thread_data.DB_access          
     
+    if thread_data.DB is not None:
+        if thread_data.DB.open:
+            thread_data.DB.close()
+        thread_data.DB = None
 
+    response["a_time"] = str(time.time() - t0) 
 
     return jsonify(response)
 

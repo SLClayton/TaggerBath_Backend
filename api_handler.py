@@ -33,13 +33,15 @@ def api_request(request):
 
 
 
+
+
     #----------------------------------------------------------------
     # create_user needs fb login, but not an active account. Special
     # case
     #----------------------------------------------------------------
     if request["request_type"] == "create_user":
 
-        if facebook.verify_token(request["fb_id"], request["userAccessToken"]):
+        if verify_token_with_facebook(request["fb_id"], request["userAccessToken"]):
             return create_user(request)
 
         else:
@@ -113,7 +115,7 @@ def new_position(request, user):
 
     if square == None:
         response = {"outcome": "fail",
-                    "message": "Could not find square for ({0}, {1}), may be outside bounds"}
+                    "message": "Could not find square for ({0}, {1}), may be outside bounds".format(str(nw_lat), str(nw_lng))}
         return response
     
 
