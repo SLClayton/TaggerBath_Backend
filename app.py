@@ -2,6 +2,7 @@ import os
 import sys
 import traceback
 import time
+import collections
 
 from flask import Flask, jsonify, request
 import logging
@@ -37,10 +38,12 @@ def api_router():
 
     thread_data.DB = None
     thread_data.DB_access = 0
+    thread_data.DB_access_times = []
+    thread_data.DB_access_type = None
 
     if request.get_json():
 
-        json = uni_to_utf8(request.get_json())
+        json = convert(request.get_json())
         response = api_request(json)
         if "sendback" in json:
             response["a_request"] = json
@@ -59,14 +62,17 @@ def api_router():
 
 
     response["request_id"] = rid
-    response["DB_access"] = thread_data.DB_access          
+    response["DB_access"] = thread_data.DB_access    
+    response["DB_access_times"] =  thread_data.DB_access_times  
+    response["DB_access_type"] = thread_data.DB_access_type   
     
     if thread_data.DB is not None:
         if thread_data.DB.open:
             thread_data.DB.close()
         thread_data.DB = None
 
-    response["a_time"] = str(time.time() - t0) 
+    response["a_time"] = str(time.time() - t0)[0:7]
+
 
     return jsonify(response)
 
@@ -101,3 +107,15 @@ def uni_to_utf8(json):
             json[field] = json[field].encode("utf-8")
 
     return json
+
+
+
+def convert(data):
+    if isinstance(data, basestring):
+        return str(data)
+    elif isinstance(data, collections.Mapping):
+        return dict(map(convert, data.iteritems()))
+    elif isinstance(data, collections.Iterable):
+        return type(data)(map(convert, data))
+    else:
+        return data

@@ -17,7 +17,7 @@ TEAMS = os.environ.get("TEAMS").split(",")
 
 class GridSquare:
 
-    def __init__(self, _id, nw_lat, nw_lng, team, level, stack):
+    def __init__(self, _id, nw_lat, nw_lng, team, level, stack, item=None):
 
         self._id = _id
         self.nw_lat = float(nw_lat)
@@ -25,6 +25,7 @@ class GridSquare:
         self.team = team
         self.level = level
         self.stack = stack
+        self.item = item
 
 
 
@@ -186,8 +187,8 @@ def getGridSquare(lat, lng):
     db = getCloudSQL()
     cursor = db.cursor()
 
-    cursor.execute("""select gs._id, gs.nw_lat, gs.nw_lng, gs.team, gs.level,      
-                      gs.stack1,     gs.stack2, gs.stack3, gs.stack4, 
+    cursor.execute("""select gs._id, gs.nw_lat, gs.nw_lng, gs.team,   gs.level,      
+                      gs.stack1,     gs.stack2, gs.stack3, gs.stack4, gs.item,
                       u._id,         u.fb_id,   u.name,    u.team
 
                       FROM {0}.{1} AS gs
@@ -220,51 +221,31 @@ def getGridSquare(lat, lng):
     stack = [None, None, None, None]
 
     for row in cursor.fetchall():
-        user_id = row[9]
+
+        [grid_id, nw_lat, nw_lng,  square_team, 
+         level,   stack1, stack2,  stack3, 
+         stack4,  item,   user_id, fb_id, 
+         name,    user_team] = row
 
         if user_id is not None:
             
-            if user_id == row[5]:
+            if user_id == stack1:
                 index = 0
-            elif user_id == row[6]:
+            elif user_id == stack2:
                 index = 1
-            elif user_id == row[7]:
+            elif user_id == stack3:
                 index = 2
-            elif user_id == row[8]:
+            elif user_id == stack4:
                 index = 3
 
-            stack[index] = User(user_id, row[10], row[11], row[12])
+            stack[index] = User(user_id, fb_id, name, user_team)
 
     cursor.close()
 
     while None in stack:
         stack.remove(None)
 
-    return GridSquare(row[0], row[1], row[2], row[3], row[4], stack)
-
-
-    
-def getSpecificGridSquare(lat, lng):
-    #----------------------------------------------------------------
-    # returns a gridsquare object that the coordinates are inside
-    #----------------------------------------------------------------
-
-    db = getCloudSQL()
-    cursor = db.cursor()
-
-    cursor.execute("""SELECT * FROM {0}.{1} 
-                      WHERE nw_lat = %s 
-                      and nw_lng = %s ;""".format(CLOUDSQL_DB, GRID_TABLE),
-                                            (lat, 
-                                             lng))
-
-    row = cursor.fetchone()
-    cursor.close()
-
-    if row == None:
-        return None
-    else:
-        return GridSquare(*row)
+    return GridSquare(grid_id, nw_lat, nw_lng, square_team, level, stack, item)
 
 
 
@@ -276,7 +257,7 @@ def getGrid(nw_lat, nw_lng, se_lat, se_lng):
     cursor = db.cursor()
 
 
-    cursor.execute("""SELECT nw_lat, nw_lng, team, level FROM {0}.{1}
+    cursor.execute("""SELECT nw_lat, nw_lng, team, level, item FROM {0}.{1}
                       WHERE nw_lat >= %s 
                       and nw_lat < %s 
                       and nw_lng <= %s
@@ -299,10 +280,16 @@ def getGrid(nw_lat, nw_lng, se_lat, se_lng):
         else:
             square.append(row[3])
 
+        if row[4] is not None:
+            square.append(row[4])
+
         grid.append(square)
 
     cursor.close()
 
     return grid
+
+
+
 
 

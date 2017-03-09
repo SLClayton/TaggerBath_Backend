@@ -28,9 +28,17 @@ templates = {
                                "nw_lng": float
                                },
 
-            "get_leaderboard_current_captures": {},
+            "get_leaderboard_spm": {},
 
-            "get_scale": {}
+            "get_leaderboard_score": {},
+
+            "get_leaderboard_team_score": {},
+
+            "get_leaderboard_team_spm": {},
+
+            "get_scale": {},
+
+            "get_user_info": {}
 
             }
 

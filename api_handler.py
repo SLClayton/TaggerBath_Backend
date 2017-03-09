@@ -2,13 +2,14 @@ import logging
 import os
 import sys
 import copy
+import time
 
 from operator import itemgetter
 
 import grid
 from facebook import *
 from user import *
-from json_checker import find_error_fields, need_verification
+from json_checker import find_error_fields, need_verification, templates
 from db_manager import getCloudSQL
 
 LAT_SCALE = float(os.environ.get("LAT_SCALE"))
@@ -24,6 +25,8 @@ GRID_TABLE = os.environ.get("GRID_TABLE")
 
 def api_request(request):
 
+
+
     #----------------------------------------------------------------
     # Check request JSON has no missing fields, correct types etc
     #----------------------------------------------------------------
@@ -32,7 +35,8 @@ def api_request(request):
         return incomplete_json_request(request, errors)
 
 
-
+    if request["request_type"] not in templates:
+        return invalid_request(request)
 
 
     #----------------------------------------------------------------
@@ -56,8 +60,17 @@ def api_request(request):
     elif request["request_type"] == "get_grid_square":
         return get_grid_square(request)
 
-    elif request["request_type"] == "get_leaderboard_current_captures":
-        return get_leaderboard_current_captures(request)
+    elif request["request_type"] == "get_leaderboard_spm":
+        return get_leaderboard_spm(request)
+
+    elif request["request_type"] == "get_leaderboard_score":
+        return get_leaderboard_score(request)
+
+    elif request["request_type"] == "get_leaderboard_team_spm":
+        return get_leaderboard_team_spm(request)
+
+    elif request["request_type"] == "get_leaderboard_team_score":
+        return get_leaderboard_team_score(request)
 
     elif request["request_type"] == "get_scale":
         return get_scale()
@@ -100,6 +113,8 @@ def get_scale():
 
 def new_position(request, user):
 
+
+
     #----------------------------------------------------------------
     # Unpacks some useful arguments
     #----------------------------------------------------------------
@@ -112,6 +127,7 @@ def new_position(request, user):
     #----------------------------------------------------------------
     square = grid.getGridSquare(nw_lat, nw_lng)
 
+    
 
     if square == None:
         response = {"outcome": "fail",
@@ -123,6 +139,11 @@ def new_position(request, user):
     old_team = square.team
     old_level = square.level
 
+
+    if square.item is not None:
+        user.add_item(square.item)
+
+        user.update()
 
     #----------------------------------------------------------------
     # Add user to end of list and update in db
@@ -259,20 +280,75 @@ def create_user(request):
     return response 
 
 
-def get_leaderboard_current_captures(request):
+def get_leaderboard_spm(request):
 
     whitelist = None
     if "whitelist" in request:
         whitelist = request["whitelist"]
 
-    leaderboard = leaderboard_current_captures(whitelist)
-
+    leaderboard = leaderboard_spm(whitelist)
 
     response = {"outcome": "success",
-                "message": "Got leaderboard",
+                "message": "Got personal spm leaderboard",
                 "leaderboard": leaderboard}
 
     return response
+
+
+def get_leaderboard_score(request):
+
+    whitelist = None
+    if "whitelist" in request:
+        whitelist = request["whitelist"]
+
+    timescale = None
+    if "timescale" in request:
+        timescale = request["timescale"]
+
+
+
+    leaderboard = leaderboard_score(timescale, whitelist)
+
+    response = {"outcome": "success",
+                "message": "Got personal score leaderboard",
+                "leaderboard": leaderboard}
+
+    return response
+
+
+
+def get_leaderboard_team_spm(request):
+
+    leaderboard = leaderboard_team_spm()
+
+    response = {"outcome": "success",
+                "message": "Got team spm leaderboard",
+                "leaderboard": leaderboard}
+
+    return response
+
+
+
+def get_leaderboard_team_score(request):
+
+    timescale = None
+    if "timescale" in request:
+        timescale = request["timescale"]
+
+
+    leaderboard = leaderboard_team_score(timescale)
+
+    response = {"outcome": "success",
+                "message": "Got team score leaderboard",
+                "leaderboard": leaderboard}
+
+    return response
+
+
+
+
+
+
 
 
 

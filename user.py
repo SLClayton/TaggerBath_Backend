@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 from operator import itemgetter
 
 from db_manager import getCloudSQL
@@ -11,6 +12,7 @@ USER_TABLE = os.environ.get("USER_TABLE")
 USER_ITEMS_TABLE = os.environ.get("USER_ITEMS_TABLE")
 TEAMS = os.environ.get("TEAMS").split(",")
 GRID_TABLE = os.environ.get("GRID_TABLE")
+SCORE_TABLE = os.environ.get("SCORE_TABLE")
 ACCESS_TOKEN_TABLE = os.environ.get("ACCESS_TOKEN_TABLE")
 
 
@@ -55,14 +57,26 @@ class User:
         # Update items in items table if it was ever retrieved
         #----------------------------------------------------------------
         if self.items != None:
-            for item in self.items.keys():
+
+            if len(self.items) > 0:
+
+                values = ""
+                for item in self.items.keys():
+                    values += "({0}, '{1}', {2}),".format(self._id, item, self.items[item])
+
+                values = values[:-1]
+
 
                 cursor.execute ("""REPLACE INTO {0}.{1} (user_id, item, quantity)
-                               VALUES (%s, %s, %s)
-                               """.format(CLOUDSQL_DB, USER_ITEMS_TABLE), 
-                                                (self._id,
-                                                 item,
-                                                 self.items[item]))
+                               VALUES {2}
+                               """.format(CLOUDSQL_DB, USER_ITEMS_TABLE, values))
+
+
+            else:
+                cursor.execute ("""DELETE FROM {0}.{1} 
+                                   WHERE {1}.user_id = {2}
+                               """.format(CLOUDSQL_DB, USER_ITEMS_TABLE, self._id))
+
 
         cursor.close()
         db.commit()
@@ -73,10 +87,12 @@ class User:
         if self.items == None or force:
             self.items = get_user_items(self._id)
 
+
     def get_items(self):
         self.retreive_items_from_db()
         
         return self.items
+
 
     def add_item(self, item):
         self.retreive_items_from_db()
@@ -92,8 +108,8 @@ class User:
         if item in self.items:
             self.items[item] -= 1
 
-            if self.items[item] <= 0:
-                del self.items[item]
+            if self.items[item] < 0:
+                self.items[item] = 0
         
 
     def current_captures(self):
@@ -101,6 +117,7 @@ class User:
 
 
 def verify_and_get_user(fb_id, userAccessToken):
+
 
     if userAccessToken == "sam":
         return [True, getUser("fb_id", fb_id)]
@@ -300,23 +317,17 @@ def get_current_captures(user_id, team):
             return int(row[0])
 
 
-
 def leaderboard_current_captures(whitelist=None):
 
-
-    #--------------------------------------------------
-    # Create where clause to whitelist fb IDs if given
-    #--------------------------------------------------
     fb_id_where = ""
-    if whitelist != None: 
-
-        if len(whitelist) <= 0:
-            return []
-
+    if whitelist is not None:
+        
         for fb_id in whitelist:
-            fb_id_where += " fb_id = '{0}' OR ".format(fb_id)
+            fb_id_where += "'{0}',".format(fb_id)
 
-        fb_id_where = "WHERE (" + fb_id_where[:-3] + ")"
+        fb_id_where = " WHERE u.fb_id IN (" + fb_id_where[:-1] + ")"
+
+
 
                 
     db = getCloudSQL()
@@ -328,10 +339,10 @@ def leaderboard_current_captures(whitelist=None):
     # points for them
     #--------------------------------------------------
     cursor.execute("""SELECT u.name, u.fb_id, u.team, 
-                      IFNULL(COUNT(gs.stack1 
+                      CAST(IFNULL(COUNT(gs.stack1 
                                    OR gs.stack2 
                                    OR gs.stack3 
-                                   OR gs.stack4), 0) 
+                                   OR gs.stack4), 0) AS UNSIGNED)
                       AS captures
                       FROM {0}.{1} AS u
                       LEFT JOIN {0}.{2} AS gs
@@ -343,15 +354,191 @@ def leaderboard_current_captures(whitelist=None):
                       AND gs.team=u.team
                       AND gs.level > 0
                       {3}
-                      GROUP BY name 
-                      ORDER BY captures DESC;
-                      """.format(CLOUDSQL_DB,
+                      GROUP BY u.name 
+                      ORDER BY captures DESC
+                      LIMIT 100
+                      ;""".format(CLOUDSQL_DB,
                                   USER_TABLE,
                                   GRID_TABLE,
-                                  fb_id_where))
+                                  str(fb_id_where)))
 
     leaderboard = cursor.fetchall()
 
     cursor.close()
 
     return leaderboard
+
+
+def leaderboard_spm(whitelist=None):
+
+    fb_id_where = ""
+    if whitelist is not None:
+        
+        for fb_id in whitelist:
+            fb_id_where += "'{0}',".format(fb_id)
+
+        fb_id_where = " WHERE u.fb_id IN (" + fb_id_where[:-1] + ")"
+
+
+
+                
+    db = getCloudSQL()
+    cursor = db.cursor()
+
+
+    #--------------------------------------------------
+    # Gets number of squares each user is on that has
+    # points for them
+    #--------------------------------------------------
+    cursor.execute("""SELECT u.name, u.fb_id, u.team, 
+                      CAST( SUM( IF(g._id IS NULL, 0, IF(g.item IS NULL, 1, 20)))
+                            AS UNSIGNED) AS spm
+
+                      FROM 
+                      {0}.{1} AS u
+                      LEFT JOIN 
+                      {0}.{2} AS g
+
+                      ON (u._id in (g.stack1, 
+                                    g.stack2, 
+                                    g.stack3, 
+                                    g.stack4))
+
+                      AND g.team=u.team
+                      AND g.level > 0
+
+                      {3}
+
+                      GROUP BY u.name 
+                      ORDER BY spm DESC
+                      ;""".format(CLOUDSQL_DB,
+                                  USER_TABLE,
+                                  GRID_TABLE,
+                                  str(fb_id_where)))
+
+    leaderboard = cursor.fetchall()
+
+    cursor.close()
+
+    return list(leaderboard)[0:100]
+
+
+
+def leaderboard_score(timescale, whitelist=None):
+
+    fb_id_where = ""
+    if whitelist is not None:
+        
+        for fb_id in whitelist:
+            fb_id_where += "'{0}',".format(fb_id)
+
+        fb_id_where = " WHERE u.fb_id IN (" + fb_id_where[:-1] + ")"
+
+
+
+
+    if timescale is not None and timescale.upper() in ["HOUR", "DAY", "WEEK", "MONTH"]:
+        t = "DATE_SUB(NOW(), INTERVAL 1 {0})".format(timescale)
+
+    else:
+        t = "'2000-01-01 00:00:00'"
+
+
+
+    db = getCloudSQL()
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT u.name, u.fb_id, u.team,
+                      CAST(SUM(IF(s.time > {3},
+                                  IFNULL(s.points, 0), 
+                                  0))
+                      AS UNSIGNED) AS total
+
+                      FROM      {0}.{1} AS u
+                      LEFT JOIN {0}.{2} AS s
+                      ON u._id = s.user_id
+                      {4}
+                      GROUP BY u.name
+                      ORDER BY total DESC
+
+        ;""".format(CLOUDSQL_DB, 
+                    USER_TABLE, 
+                    SCORE_TABLE, 
+                    t, 
+                    fb_id_where))
+
+    leaderboard = cursor.fetchall()
+
+    cursor.close()
+
+    return list(leaderboard)[0:100]
+
+
+def leaderboard_team_spm():
+    db = getCloudSQL()
+    cursor = db.cursor()
+
+
+    #--------------------------------------------------
+    # Gets number of squares each user is on that has
+    # points for them
+    #--------------------------------------------------
+    cursor.execute("""SELECT g.team,
+                      CAST( SUM(IF(g.item is NULL, g.level, 20 * g.level))
+                            AS UNSIGNED) AS spm
+
+                      FROM 
+                      {0}.{1} AS g
+
+                      GROUP BY g.team
+                      ORDER BY spm DESC
+                      ;""".format(CLOUDSQL_DB,
+                                  GRID_TABLE))
+
+
+    leaderboard = cursor.fetchall()
+
+    cursor.close()
+
+    return leaderboard
+
+
+
+def leaderboard_team_score(timescale):
+
+
+    if timescale is not None and timescale.upper() in ["HOUR", "DAY", "WEEK", "MONTH"]:
+        t = "DATE_SUB(NOW(), INTERVAL 1 {0})".format(timescale)
+
+    else:
+        t = "'2000-01-01 00:00:00'"
+
+
+
+    db = getCloudSQL()
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT u.team,
+                             CAST(SUM(IF(s.time > {0},
+                                         IFNULL(s.points, 0),
+                                         0)) 
+                                  AS UNSIGNED)
+                             AS total
+
+                      FROM      {1}.{2} AS s
+                      LEFT JOIN {1}.{3} AS u
+
+                      ON s.user_id = u._id
+
+                      GROUP BY u.team
+                      ORDER BY total DESC
+        ;""".format(t, CLOUDSQL_DB, SCORE_TABLE, USER_TABLE))
+
+
+    leaderboard = cursor.fetchall()
+
+    cursor.close()
+
+    return leaderboard
+
+
