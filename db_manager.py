@@ -15,7 +15,48 @@ cloudsql_unix_socket = os.path.join('/cloudsql', CLOUDSQL_CONNECTION_NAME)
 
 
 
+def getCloudSQL1():
+    #----------------------------------------------------------------
+    # Un-used function from a previous iteration
+    #----------------------------------------------------------------
+
+    t0 = time.time()
+    thread_data.DB_access += 1
+
+    if 'gDB' not in globals():
+        global gDB
+        gDB = None
+
+    global gDB
+
+    if gDB is None:
+        logging.info("DB is None, Creating one")
+        gDB = _getCloudSQL()
+
+    else:
+        logging.info("DB not None, re-using")
+        try:
+            c = gDB.cursor()
+            c.execute("SELECT version()")
+
+        except MySQLdb.Error:
+            logging.info("DB disconnected on test, creating new connection")
+            gDB = _getCloudSQL()
+
+
+
+    thread_data.DB_access_times.append(str(time.time() - t0)[0:7])
+
+    return gDB
+
+
+
 def getCloudSQL():
+
+    #----------------------------------------------------------------
+    # Checks if a DB instance is created, returns it if it is,
+    # and creates one if it isn't
+    #----------------------------------------------------------------
 
     t0 = time.time()
 
@@ -27,10 +68,10 @@ def getCloudSQL():
     else:
         logging.info("DB not None, re-using")
 
+
     thread_data.DB_access_times.append(str(time.time() - t0)[0:7])
 
     return thread_data.DB
-
 
 
 def _getCloudSQL():

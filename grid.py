@@ -14,7 +14,9 @@ MAX_STACK = int(os.environ.get("MAX_STACK"))
 TEAMS = os.environ.get("TEAMS").split(",")
 
 
-
+#----------------------------------------------------------------
+# Class that represents a square on the grid
+#----------------------------------------------------------------
 class GridSquare:
 
     def __init__(self, _id, nw_lat, nw_lng, team, level, stack, item=None):
@@ -27,6 +29,10 @@ class GridSquare:
         self.stack = stack
         self.item = item
 
+        self.changed = False
+
+
+
 
 
     def __str__(self):
@@ -38,16 +44,25 @@ class GridSquare:
                                                                        str(self.stack))
 
 
-
+    #----------------------------------------------------------------
+    # Remove a user from this squares stack
+    #----------------------------------------------------------------
     def remove_from_stack(self, _id):
         for user in self.stack:
 
             if user._id == _id:
 
                 self.stack.remove(user)
-                return
+                return True
+
+        return False
 
 
+
+    #----------------------------------------------------------------
+    # Return a dict with the number of users from each team that
+    # are on the stack
+    #----------------------------------------------------------------
     def get_team_sizes(self):
         amounts = {}
         winning_team = None
@@ -63,11 +78,15 @@ class GridSquare:
                 winning_team = user.team
 
 
+        # denote team with most users on stack
         amounts["winning_team"] = winning_team
 
         return amounts
 
 
+    #----------------------------------------------------------------
+    # Remove a member from the team specified from the stack
+    #----------------------------------------------------------------
     def remove_team_user(self, team):
         for user in self.stack:
             if user.team == team:
@@ -77,6 +96,10 @@ class GridSquare:
         return False
 
 
+
+    #----------------------------------------------------------------
+    # Algorithm for deciding new state of square
+    #----------------------------------------------------------------  
     def add_user(self, user):
 
         team_sizes = self.get_team_sizes()
@@ -85,7 +108,8 @@ class GridSquare:
         #----------------------------------------------------------------
         # If user already in the square stack, remove them first
         #----------------------------------------------------------------
-        self.remove_from_stack(user._id)
+        if not self.remove_from_stack(user._id):
+            self.changed = True
 
         #----------------------------------------------------------------
         # Add user to end of list
@@ -157,14 +181,21 @@ class GridSquare:
             s.append(None)
 
 
+        update_count = ""
+        if self.changed:
+            update_count = ", update_count = update_count + 1 "
+
+
         cursor.execute ("""UPDATE {0}.{1} 
                            SET team = %s, 
                                level = %s,
                                stack1 = %s,
                                stack2 = %s,
                                stack3 = %s,
-                               stack4 = %s
-                           WHERE _id = %s ;""".format(CLOUDSQL_DB, GRID_TABLE), 
+                               stack4 = %s,
+                               updated = NOW()
+                               {2}
+                           WHERE _id = %s ;""".format(CLOUDSQL_DB, GRID_TABLE, update_count), 
                                                     (self.team, 
                                                      self.level,
                                                      s[0],
@@ -181,7 +212,7 @@ class GridSquare:
 
 def getGridSquare(lat, lng):
     #----------------------------------------------------------------
-    # returns a gridsquare object that the coordinates are inside
+    # returns a gridsquare object that the coordinates lay within
     #----------------------------------------------------------------
 
     db = getCloudSQL()
@@ -227,6 +258,10 @@ def getGridSquare(lat, lng):
          stack4,  item,   user_id, fb_id, 
          name,    user_team] = row
 
+
+        #----------------------------------------------------------------
+        # Build stack from db values
+        #----------------------------------------------------------------
         if user_id is not None:
             
             if user_id == stack1:
@@ -251,7 +286,7 @@ def getGridSquare(lat, lng):
 
 def getGrid(nw_lat, nw_lng, se_lat, se_lng):
     #----------------------------------------------------------------
-    # returns entire map
+    # returns entire map within given bounds
     #----------------------------------------------------------------
     db = getCloudSQL()
     cursor = db.cursor()

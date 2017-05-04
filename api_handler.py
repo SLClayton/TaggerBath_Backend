@@ -103,6 +103,9 @@ def api_request(request):
 
 
 def get_scale():
+    #----------------------------------------------------------------
+    # Return scale of squares within the grid
+    #----------------------------------------------------------------
     response = {"outcome": "success",
                 "message": "Scale gotten",
                 "lat_scale": LAT_SCALE,
@@ -174,6 +177,10 @@ def new_position(request, user):
 
 
 def get_grid(request):
+    #----------------------------------------------------------------
+    # Extract bounds and return list of squares from grid
+    #----------------------------------------------------------------
+
     nw_lat = request["nw_lat"]
     nw_lng = request["nw_lng"]
     se_lat = request["se_lat"]
@@ -195,6 +202,11 @@ def get_grid(request):
 
 
 def get_grid_square(request):
+
+    #----------------------------------------------------------------
+    # Return data for a particular square
+    # I don't think this is ever used, just in case one day
+    #----------------------------------------------------------------
 
     nw_lat = request["nw_lat"]
     nw_lng = request["nw_lng"]
@@ -231,12 +243,18 @@ def get_grid_square(request):
 
 def get_user_info(request, user):
 
+    #----------------------------------------------------------------
+    # Returns the info of the user requesting
+    #----------------------------------------------------------------
+
     response = {"outcome": "success",
                 "message": "Successfully gotten user info for '{0}'".format(user.name),
                 "name": user.name,
                 "team": user.team,
                 "email": user.email,
-                "items": user.get_items()
+                "fb_id": user.fb_id,
+                "items": user.get_items(),
+                "spm" : user.spm
                 }
         
     return response
@@ -244,17 +262,24 @@ def get_user_info(request, user):
 
 def create_user(request):
 
+
     name = request["name"]
     email = request["email"]
     team = least_populous_team()
     fb_id = request["fb_id"]
 
+    #----------------------------------------------------------------
+    # Check name is valid (char check)
+    #----------------------------------------------------------------
     if not is_username_valid(name):
         response = {"outcome": "fail",
                     "error_code": 3,
                     "message": "Username '{0}' not allowed".format(name)}
 
 
+    #----------------------------------------------------------------
+    # Check whether or not username is taken
+    #----------------------------------------------------------------
     elif is_username_taken(name):
         response = {"outcome": "fail",
                     "error_code": 1,
@@ -263,6 +288,9 @@ def create_user(request):
     else:
 
         try:
+            #----------------------------------------------------------------
+            # Checks are done, try and create user
+            #----------------------------------------------------------------
             createUser(name, team, email, fb_id)
 
             user = getUser("fb_id", fb_id)
@@ -273,6 +301,9 @@ def create_user(request):
 
 
         except Exception as e:
+            #----------------------------------------------------------------
+            # Something went wrong, can't create user, send fail response
+            #----------------------------------------------------------------
             response = {"outcome": "fail",
                         "message": "Failed to create user '{0}' - {1}".format(name, str(e))}
 
@@ -281,6 +312,10 @@ def create_user(request):
 
 
 def get_leaderboard_spm(request):
+
+    #----------------------------------------------------------------
+    # Get Score Per Minute leaderboard and return it to requester
+    #----------------------------------------------------------------
 
     whitelist = None
     if "whitelist" in request:
@@ -297,6 +332,9 @@ def get_leaderboard_spm(request):
 
 def get_leaderboard_score(request):
 
+    #----------------------------------------------------------------
+    # Optional arguments, check and use if exist
+    #----------------------------------------------------------------
     whitelist = None
     if "whitelist" in request:
         whitelist = request["whitelist"]
@@ -307,6 +345,9 @@ def get_leaderboard_score(request):
 
 
 
+    #----------------------------------------------------------------
+    # Get total Score leaderboard and return it to requester
+    #----------------------------------------------------------------
     leaderboard = leaderboard_score(timescale, whitelist)
 
     response = {"outcome": "success",
@@ -318,6 +359,10 @@ def get_leaderboard_score(request):
 
 
 def get_leaderboard_team_spm(request):
+
+    #----------------------------------------------------------------
+    # Get Team Score Per Minute leaderboard and return it to requester
+    #----------------------------------------------------------------
 
     leaderboard = leaderboard_team_spm()
 
@@ -335,6 +380,10 @@ def get_leaderboard_team_score(request):
     if "timescale" in request:
         timescale = request["timescale"]
 
+
+    #----------------------------------------------------------------
+    # Get team total Score leaderboard and return it to requester
+    #----------------------------------------------------------------
 
     leaderboard = leaderboard_team_score(timescale)
 

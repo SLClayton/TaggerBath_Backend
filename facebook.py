@@ -13,12 +13,18 @@ ACCESS_TOKEN_TABLE = os.environ.get("ACCESS_TOKEN_TABLE")
 
 def verify_token_with_facebook(fb_id, userAccessToken):
 
-    
+    #----------------------------------------------------------------
+    # Chwecks with the Facebook API whether or not the given
+    # accessToken matches with the facebook ID given
+    #----------------------------------------------------------------
 
     APP_ID = str(os.environ.get("FACEBOOK_APP_ID"))
     APP_SECRET = str(os.environ.get("FACEBOOK_APP_SECRET"))
 
 
+    #----------------------------------------------------------------
+    # Create url request
+    #----------------------------------------------------------------
     url = "https://graph.facebook.com/debug_token?"
 
     url += "input_token=%s&access_token=%s|%s" % (urllib.quote(str(userAccessToken)),
@@ -39,7 +45,10 @@ def verify_token_with_facebook(fb_id, userAccessToken):
     logging.info(str(r))
 
     
-
+    #----------------------------------------------------------------
+    # Check response for not only if token was correct, but if it
+    # is for the correct app
+    #----------------------------------------------------------------
     if (r["data"]["is_valid"] == True   and 
         r["data"]["app_id"]   == APP_ID and 
         r["data"]["user_id"]  == fb_id):
@@ -52,7 +61,14 @@ def verify_token_with_facebook(fb_id, userAccessToken):
     return False
     
 
+
 def get_local_token(fb_id):
+
+    #----------------------------------------------------------------
+    # Check local Database to see if an accesstoken has been 
+    # kept for this Facebook ID
+    #----------------------------------------------------------------
+
     db = getCloudSQL()
     cursor = db.cursor()
 
@@ -73,6 +89,11 @@ def get_local_token(fb_id):
     
 
 def update_local_token(fb_id, userAccessToken):
+    #----------------------------------------------------------------
+    # Uodate local DB for access token for this facebook ID
+    #----------------------------------------------------------------
+
+
     db = getCloudSQL()
     cursor = db.cursor()
 

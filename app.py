@@ -13,6 +13,9 @@ from threaddata import thread_data
 
 app = Flask(__name__)
 
+#----------------------------------------------------------------
+# Change setting depending on where deployed
+#----------------------------------------------------------------
 if os.getenv('SERVER_SOFTWARE', '').startswith('Google App Engine/'):
     app.config["DEBUG"] = False
 else:
@@ -21,18 +24,34 @@ else:
 
 
 
+#----------------------------------------------------------------
+# The following http routes are taken depending on the url entered
+# This is the 'entry' point to all requests from clients
+#----------------------------------------------------------------
+
 @app.route('/')
 @app.route('/index')
 def index():
+    #----------------------------------------------------------------
+    # Used as default, testing
+    #----------------------------------------------------------------
     return "You've arrived at the index"
 
 @app.route('/test')
 def test():
+    #----------------------------------------------------------------
+    # Used for testing connection
+    #----------------------------------------------------------------
     return "Success! This message has been sent from the server!"
 
 
+
+#----------------------------------------------------------------
+# All API traffic through here
+#----------------------------------------------------------------
 @app.route('/api', methods=["GET", "POST"])
 def api_router():
+
 
     t0 = time.time()
 
@@ -41,10 +60,25 @@ def api_router():
     thread_data.DB_access_times = []
     thread_data.DB_access_type = None
 
+
+
+    #----------------------------------------------------------------
+    # Check JSON is present in request
+    #----------------------------------------------------------------
     if request.get_json():
 
         json = convert(request.get_json())
+
+        #----------------------------------------------------------------
+        # Send JSON off to be sorted and retrieve the response whatever
+        # it may be
+        #----------------------------------------------------------------
         response = api_request(json)
+
+        #----------------------------------------------------------------
+        # If send back argument given, put the request back into the
+        # response. (for testing obviously)
+        #----------------------------------------------------------------
         if "sendback" in json:
             response["a_request"] = json
 
@@ -55,6 +89,8 @@ def api_router():
 
 
     
+
+
     if request.get_json() and request.get_json()["request_id"]:
         rid = request.get_json()["request_id"]
     else:
@@ -80,13 +116,11 @@ def api_router():
 
 @app.errorhandler(404)
 def page_not_found(e):
-    """Return a custom 404 error."""
     logging.exception('An error occurred during a request.')
     return 'Sorry, nothing at this URL.', 404
 
 @app.errorhandler(500)
 def server_error(e):
-    # Log the error and stacktrace.
     logging.exception('An error occurred during a request.')
     return 'An internal error occurred.', 500
 
@@ -95,7 +129,8 @@ def uni_to_utf8(json):
     #----------------------------------------------------------------
     # I thought changing all the nested unicode strings to utf-8
     # would solve a bug, it may or may not have but I'm leaving
-    # it in just in case it did.
+    # it in just in case it did. It works as is and doesn't slow
+    # anything down
     #----------------------------------------------------------------
 
     for field in json.keys():
@@ -111,6 +146,9 @@ def uni_to_utf8(json):
 
 
 def convert(data):
+    #----------------------------------------------------------------
+    # Converts nested basestrings to strings
+    #----------------------------------------------------------------
     if isinstance(data, basestring):
         return str(data)
     elif isinstance(data, collections.Mapping):

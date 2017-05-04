@@ -16,16 +16,20 @@ SCORE_TABLE = os.environ.get("SCORE_TABLE")
 ACCESS_TOKEN_TABLE = os.environ.get("ACCESS_TOKEN_TABLE")
 
 
-
+#----------------------------------------------------------------
+# Class to hold user data
+#----------------------------------------------------------------
 class User:
 
-    def __init__(self, _id, fb_id, name, team, email=None):
+    def __init__(self, _id, fb_id, name, team, spm=None, email=None):
         self._id = _id
         self.name = name
         self.team = team
         self.email = email
         self.fb_id = fb_id
+        self.spm = spm
         self.items = None
+
 
     def __str__(self):
         return "USER: {0}, n:{1}, t:{2}, em:{3}, fb_id:{4}".format( self._id,
@@ -82,7 +86,9 @@ class User:
         db.commit()
 
 
-
+    #----------------------------------------------------------------
+    # Get user items from db
+    #----------------------------------------------------------------
     def retreive_items_from_db(self, force=False):
         if self.items == None or force:
             self.items = get_user_items(self._id)
@@ -94,6 +100,9 @@ class User:
         return self.items
 
 
+    #----------------------------------------------------------------
+    # Add an item to the users collection
+    #----------------------------------------------------------------
     def add_item(self, item):
         self.retreive_items_from_db()
 
@@ -102,6 +111,10 @@ class User:
         else:
             self.items[item] = 1
 
+
+    #----------------------------------------------------------------
+    # Remove an item from the users collection
+    #----------------------------------------------------------------
     def remove_item(self, item):
         self.retreive_items_from_db()
 
@@ -112,15 +125,27 @@ class User:
                 self.items[item] = 0
         
 
+    #----------------------------------------------------------------
+    # Return number of squares user has
+    #----------------------------------------------------------------
     def current_captures(self):
         return get_current_captures(self._id, self.team)
 
 
+
+#----------------------------------------------------------------
+# Verify user credentials, and then return a User object of that
+# user
+#----------------------------------------------------------------
 def verify_and_get_user(fb_id, userAccessToken):
 
 
-    if userAccessToken == "sam":
-        return [True, getUser("fb_id", fb_id)]
+
+    #----------------------------------------------
+    # For testing purposes, not used in prod
+    #----------------------------------------------
+    #if userAccessToken == "sam":
+    #    return [True, getUser("fb_id", fb_id)]
 
 
 
@@ -130,16 +155,39 @@ def verify_and_get_user(fb_id, userAccessToken):
     db = getCloudSQL()
     cursor = db.cursor()
 
-    cursor.execute("""SELECT u._id, u.fb_id, u.name, u.team, u.email, at.accessToken
-                      FROM      {0}.{1} AS u
+    cursor.execute("""SELECT u._id, u.fb_id, u.name, u.team, u.email,
+                             CAST( SUM( IF(g._id IS NULL, 
+                                           0, 
+                                           IF(g.item IS NULL, 1, 20)))
+                                  AS UNSIGNED) AS spm,
+                       u.accessToken
+
+                      FROM 
+
+                     (SELECT iu._id, iu.fb_id, iu.name, iu.team, iu.email, at.accessToken
+                      FROM      {0}.{1} AS iu
                       LEFT JOIN {0}.{2} AS at
-                      ON u.fb_id = at.fb_id
+                      ON iu.fb_id = at.fb_id
+                      WHERE iu.fb_id = %s ) AS u
 
-                      WHERE u.fb_id = %s ;""".format(CLOUDSQL_DB,
-                                                  USER_TABLE,
-                                                  ACCESS_TOKEN_TABLE),
+                      LEFT JOIN 
+                      {0}.{3} AS g
 
-                                                  (fb_id,))
+                      ON (u._id in (g.stack1, 
+                                    g.stack2, 
+                                    g.stack3, 
+                                    g.stack4))
+
+                      AND g.team = u.team
+                      AND g.level > 0
+
+                      GROUP BY u._id
+                      ;""".format(CLOUDSQL_DB,
+                                  USER_TABLE,
+                                  ACCESS_TOKEN_TABLE,
+                                  GRID_TABLE),
+
+                                  (fb_id,))
 
     row = cursor.fetchone()
     cursor.close()
@@ -147,13 +195,21 @@ def verify_and_get_user(fb_id, userAccessToken):
     if row == None:
         return [verify_token_with_facebook(fb_id, userAccessToken), None]
 
+    _id = row[0]
+    fb_id = row[1]
+    name = row[2]
+    team = row[3]
+    email = row[4]
+    spm = row[5]
+    accessToken = row[6]
 
-    user = User(row[0], row[1], row[2], row[3])
+
+    user = User(_id, fb_id, name, team, spm, email)
 
     #----------------------------------------------
     # Check local acccess token
     #----------------------------------------------
-    if userAccessToken == row[5]:
+    if userAccessToken == accessToken:
         return [True, user]
 
 
@@ -183,12 +239,32 @@ def getUser(id_type, value):
     db = getCloudSQL()
     cursor = db.cursor()
 
-    cursor.execute("""SELECT _id, fb_id, name, team, email 
-                      FROM {0}.{1} 
-                      WHERE {2} = %s ;""".format(CLOUDSQL_DB,
-                                                  USER_TABLE,
-                                                  id_type),
-                                                  (str(value),))
+    cursor.execute("""SELECT u._id, u.fb_id, u.name, u.team,
+                      CAST( SUM( IF(g._id IS NULL, 0, IF(g.item IS NULL, 1, 20)))
+                            AS UNSIGNED) AS spm,
+                            u.email
+
+                      FROM 
+                      {0}.{1} AS u
+                      LEFT JOIN 
+                      {0}.{2} AS g
+
+                      ON (u._id in (g.stack1, 
+                                    g.stack2, 
+                                    g.stack3, 
+                                    g.stack4))
+
+                      AND g.team=u.team
+                      AND g.level > 0
+            
+                      WHERE {3} = %s
+
+                      GROUP BY u._id
+                      ;""".format(CLOUDSQL_DB,
+                                  USER_TABLE,
+                                  GRID_TABLE,
+                                  id_type),
+                                  (str(value),))
 
     row = cursor.fetchone()
     cursor.close()
@@ -218,6 +294,7 @@ def createUser(name, team, email, fb_id):
 
     db.commit()
     cursor.close()
+
 
 def is_username_taken(name):
 
@@ -250,6 +327,10 @@ def is_username_valid(name):
 
 
 def get_user_items(user_id):
+    #----------------------------------------------------------------
+    # Get user items from items table
+    #----------------------------------------------------------------
+
     db = getCloudSQL()
     cursor = db.cursor()
 
@@ -269,6 +350,11 @@ def get_user_items(user_id):
 
 
 def least_populous_team():
+    #----------------------------------------------------------------
+    # Find the team which has least members
+    # (used for new users to assign a team)
+    #----------------------------------------------------------------
+
     db = getCloudSQL()
     cursor = db.cursor()
 
@@ -426,17 +512,32 @@ def leaderboard_spm(whitelist=None):
 
 def leaderboard_score(timescale, whitelist=None):
 
+    #--------------------------------------------------
+    # Get leaderboard for score
+    #--------------------------------------------------
+
+
+
+    #--------------------------------------------------
+    # IF whitelist given, only query Facebook values from
+    # this list
+    #--------------------------------------------------
     fb_id_where = ""
     if whitelist is not None:
+
+        values = "'010101',"
         
         for fb_id in whitelist:
-            fb_id_where += "'{0}',".format(fb_id)
+            values += "'{0}',".format(fb_id)
 
-        fb_id_where = " WHERE u.fb_id IN (" + fb_id_where[:-1] + ")"
-
-
+        fb_id_where = " WHERE u.fb_id IN (" + values[:-1] + ")"
 
 
+
+    #--------------------------------------------------
+    # If timescale given, only query for score
+    # within this time
+    #--------------------------------------------------
     if timescale is not None and timescale.upper() in ["HOUR", "DAY", "WEEK", "MONTH"]:
         t = "DATE_SUB(NOW(), INTERVAL 1 {0})".format(timescale)
 

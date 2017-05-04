@@ -1,6 +1,12 @@
 import sys
 import logging
 
+
+#----------------------------------------------------------------
+# The arguments each request type requires, and the types of the 
+# values they need
+#----------------------------------------------------------------
+
 templates = {
             "request": {"request_type": str},
 
@@ -49,6 +55,13 @@ need_verification = ["create_user",
 
 
 def find_error_fields(arguments, request_type):
+
+    #----------------------------------------------------------------
+    # Checks arguments with request type and returns a list of
+    # fields which are in error
+    #
+    # Empty list means all is good.
+    #----------------------------------------------------------------
 
     errors = []
 
