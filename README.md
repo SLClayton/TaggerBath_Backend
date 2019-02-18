@@ -4,7 +4,7 @@ Tagger Bath is a location based, team oriented, 'land grab' game where you are a
 
 This repo is home to the Python code which ran the backend of the application which ran on Google App Engine.
 
-The repo for the [front end Android app can be found here](https://github.com/SLClayton/TaggerBath_App).
+The repo for the [front end Android app and more detailed description of the game can be found here](https://github.com/SLClayton/TaggerBath_App).
 
 ## Screenshots
 
